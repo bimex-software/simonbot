@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .form__group {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 0 0;
+      width: 50%;
+    }
+
+    .form__field {
+      font-family: inherit;
+      width: 100%;
+      border: 0;
+      border-bottom: 2px solid #9b9b9b;
+      outline: 0;
+      font-size: 1.3rem;
+      color: #fff;
+      padding: 7px 0;
+      background: transparent;
+      transition: border-color 0.2s;
+    }
+
+    .form__field::placeholder {
+      color: transparent;
+    }
+
+    .form__field:placeholder-shown ~ .form__label {
+      font-size: 1.3rem;
+      cursor: text;
+      top: 20px;
+    }
+
+    .form__label {
+      position: absolute;
+      top: 0;
+      display: block;
+      transition: 0.2s;
+      font-size: 1rem;
+      color: #9b9b9b;
+    }
+
+    .form__field:focus {
+      padding-bottom: 6px;
+      font-weight: 700;
+      border-width: 3px;
+      border-image: linear-gradient(to right, #11998e, #38ef7d);
+      border-image-slice: 1;
+    }
+
+    .form__field:focus ~ .form__label {
+      position: absolute;
+      top: 0;
+      display: block;
+      transition: 0.2s;
+      font-size: 1rem;
+      color: #11998e;
+      font-weight: 700;
+    }
+
+    /* reset input */
+    .form__field:required,
+    .form__field:invalid {
+      box-shadow: none;
+    }
+
+    /* demo */
+    body {
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-size: 1.5rem;
+      background-color: #222;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #videoPlayer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #searchForm {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    input {
+      border: none;
+      border-radius: 4px;
+      padding: 10px 15px;
+      font-size: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      width: 500px;
+    }
+
+  </style>
+  <title>Talk with Simon</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+  
+<video id="videoPlayer">
+  <source src="ai-simon (online-video-cutter.com).mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+<div class="chat-container">
+</div>
+<form id="searchForm">
+  <input type="text" id="searchInput" placeholder="Ask me a question..." onkeydown="handleKeyDown(event)">
+</form>
+<ul id="resultsList" class="wiki"></ul>
+
+
+<script>
+const chatContainer = document.querySelector(".chat-container");
+const searchForm = document.getElementById("searchForm");
+const searchInput = document.getElementById("searchInput");
+const videoPlayer = document.getElementById("videoPlayer");
+let isSpeaking = false; // Variable to track text-to-speech state
+let pauseTimeout; // Timeout for delayed video pause
+
+// Conversations array
+const conversations = [
+{ question: "what color is the sky", answer: "the color of the sky is sometimes blue, but depends on other things", keywords: ["sky color"] },
+
+  // Add more conversation objects as needed
+];
+
+searchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const query = searchInput.value.trim();
+
+  if (query !== "") {
+    resetVideo(); // Reset the video player
+
+    const conversation = conversations.find((conversation) =>
+      conversation.keywords.some((keyword) => query.includes(keyword))
+    );
+    if (conversation) {
+      const botMessage = createBotMessage(conversation.answer);
+      appendMessageToChatContainer(botMessage);
+
+      const words = conversation.answer.split(" ");
+      let wordIndex = 0;
+
+      speakAnswer(conversation.answer, {
+        onStart: () => {
+          playVideo();
+        },
+        onBoundary: (event) => {
+          // Check if it's the last word
+          if (event.name === "word" && wordIndex === words.length - 1) {
+            clearTimeout(pauseTimeout);
+            pauseTimeout = setTimeout(() => {
+              pauseVideo();
+            }, 1000); // Delayed pause of 1 second
+          }
+          wordIndex++;
+        },
+        onEnd: () => {
+          clearTimeout(pauseTimeout);
+          pauseVideo();
+        },
+      });
+    }
+
+    searchInput.value = "";
+  }
+});
+
+function handleKeyDown(event) {
+  if (event.key === "Enter") {
+    searchForm.dispatchEvent(new Event("submit"));
+  }
+}
+
+function playVideo() {
+  videoPlayer.play();
+}
+
+function pauseVideo() {
+  videoPlayer.pause();
+  videoPlayer.currentTime = videoPlayer.duration; // Set video time to the end
+}
+
+function resetVideo() {
+  pauseVideo();
+  videoPlayer.currentTime = 0; // Reset video time to the beginning
+  videoPlayer.muted = true; // Mute the video player
+}
+
+function appendMessageToChatContainer(message) {
+  chatContainer.appendChild(message);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function createBotMessage(text) {
+  const message = document.createElement("div");
+  message.classList.add("message", "bot");
+  message.textContent = text;
+  return message;
+}
+
+function speakAnswer(answer, options) {
+  const speech = new SpeechSynthesisUtterance(answer);
+  speech.onstart = options.onStart;
+  speech.onboundary = options.onBoundary;
+  speech.onend = options.onEnd;
+  speechSynthesis.speak(speech);
+}
+
+// Listen for video ended event
+videoPlayer.addEventListener("ended", () => {
+  videoPlayer.currentTime = 0; // Reset video time to the beginning
+});
+
+// Rest of the code...
+function scrollToCenterHorizontal() {
+  var screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+  var documentWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.documentElement.clientWidth);
+  var scrollPosition = (documentWidth - screenWidth) / 2;
+
+  window.scrollTo({
+    top: 0,
+    left: scrollPosition,
+    behavior: 'smooth' // You can change this to 'auto' for an instant scroll
+  });
+}
+
+// Call the function when needed
+scrollToCenterHorizontal();
+
+
+</script>
+</body>
+</html>
+   
+
