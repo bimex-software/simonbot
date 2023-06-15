@@ -410,6 +410,31 @@ function scrollToCenterHorizontal() {
 // Call the function when needed
 scrollToCenterHorizontal();
 
+// Detect if the browser is running on an iPhone
+var isiPhone = /iPhone|iPod/i.test(navigator.userAgent);
+
+// Detect the fullscreen event
+document.addEventListener('webkitfullscreenchange', function (event) {
+  var videoElement = document.webkitFullscreenElement;
+
+  // Check if the video is in full-screen mode on iPhone
+  if (isiPhone && videoElement && !document.webkitDisplayingFullscreen) {
+    exitFullScreen();
+  }
+});
+
+// Function to exit full-screen mode
+function exitFullScreen() {
+  if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  } else if (document.mozCancelFullScreen) {
+    document.mozCancelFullScreen();
+  } else if (document.msExitFullscreen) {
+    document.msExitFullscreen();
+  } else if (document.exitFullscreen) {
+    document.exitFullscreen();
+  }
+}
 
 </script>
 </body>
